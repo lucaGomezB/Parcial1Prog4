@@ -1,0 +1,13 @@
+# Web Framework & ORM
+fastapi
+sqlmodel
+
+# Servidor ASGI (Indispensable para correr FastAPI)
+uvicorn[standard]
+
+# Base de Datos
+psycopg2-binary        # Driver para PostgreSQL
+alembic                # Para migraciones (crucial si tu UML cambia)
+
+# Utilidades
+python-dotenv
