@@ -3,7 +3,7 @@ from typing import List, Optional
 from .models import Producto
 from ..producto_categoria import ProductoCategoria
 from .schemas import ProductoCreate, ProductoUpdate
-from ....models.base import get_utc_now
+from models.base import get_utc_now
 from ..producto_ingrediente import ProductoIngrediente
 
 class ProductoService:

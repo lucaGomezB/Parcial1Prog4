@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 from typing import List
-from ....core.database import get_session 
+from core.database import get_session 
 from .service import IngredienteService
 from .schemas import IngredienteRead, IngredienteCreate, IngredienteUpdate
 

@@ -2,7 +2,7 @@ from sqlmodel import Session, select, col
 from typing import List, Optional
 from .models import Ingrediente
 from .schemas import IngredienteCreate, IngredienteUpdate
-from ....models.base import get_utc_now
+from models.base import get_utc_now
 
 class IngredienteService:
     @staticmethod

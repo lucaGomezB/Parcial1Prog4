@@ -1,7 +1,7 @@
 # router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-from ....core.database import get_session
+from core.database import get_session
 from .service import CategoriaService
 from .schemas import CategoriaRead, CategoriaCreate, CategoriaTree
 

@@ -2,7 +2,7 @@
 from sqlmodel import Session, select, col
 from .models import Categoria
 from .schemas import CategoriaCreate
-from ....models.base import get_utc_now
+from models.base import get_utc_now
 
 class CategoriaService:
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 from typing import List
-from ....database import get_session # Ajustar según tu ruta de db
+from core.database import get_session
 from .service import ProductoService
 from .schemas import ProductoRead, ProductoCreate, ProductoUpdate
 
