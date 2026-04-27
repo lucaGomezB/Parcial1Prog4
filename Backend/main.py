@@ -40,4 +40,4 @@ app.include_router(ingrediente_router)
 
 @app.get("/")
 def read_root():
-    return {"status": "online"}
+    return {"status": "online"} # Endpoint para probar si anda la app.

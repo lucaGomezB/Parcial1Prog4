@@ -12,9 +12,8 @@ class CategoriaUpdate(CategoriaBase):
 class CategoriaRead(CategoriaBase):
     id: int
 
-# Este schema se usa para devolver el árbol completo
+# Este schema se usa para devolver el árbol completo de herencia
 class CategoriaTree(CategoriaRead):
     subcategorias: list["CategoriaTree"] = []
 
-# Necesario para que Pydantic procese la autoreferencia en los tipos
-CategoriaTree.model_rebuild()
+CategoriaTree.model_rebuild() # Necesario para que Pydantic procese la autoreferencia en los tipos

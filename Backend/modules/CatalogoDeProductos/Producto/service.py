@@ -1,80 +1,73 @@
-from sqlmodel import Session, select, col
-from typing import List, Optional
+from sqlmodel import Session
 from .models import Producto
-from ..producto_categoria import ProductoCategoria
 from .schemas import ProductoCreate, ProductoUpdate
 from models.base import get_utc_now
-from ..producto_ingrediente import ProductoIngrediente
+from ..uow import CatalogoDeProductosUnitOfWork
 
 class ProductoService:
     @staticmethod
     def create(session: Session, data: ProductoCreate):
-        # 1. Extraer datos de relaciones y crear el Producto
-        producto_data = data.model_dump(exclude={"categorias_ids", "categoria_principal_id", "ingredientes"})
-        db_producto = Producto(**producto_data)
-        session.add(db_producto)
-        session.flush() # Obtenemos db_producto.id
-        # 2. Asignar Categorías (Solo si vienen en el JSON)
-        if data.categorias_ids:
-            for cat_id in data.categorias_ids:
-                enlace_cat = ProductoCategoria(
-                    producto_id=db_producto.id, 
-                    categoria_id=cat_id, 
-                    es_principal=(cat_id == data.categoria_principal_id)
-                )
-                session.add(enlace_cat)
-        # 3. Asignar Ingredientes (Solo si vienen en el JSON)
-        if data.ingredientes:
-            for i in data.ingredientes:
-                enlace_ingredientes = ProductoIngrediente(
-                    producto_id=db_producto.id, 
-                    ingrediente_id=i.ingrediente_id, 
-                    es_removible=i.es_removible, 
-                    es_principal=i.es_principal
-                )
-                session.add(enlace_ingredientes)
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            producto_data = data.model_dump(exclude={"categorias_ids", "categoria_principal_id", "ingredientes"})
+            db_producto = Producto(**producto_data)
+            uow.productos.add(db_producto)
+            uow.productos.flush()
 
-        session.commit()
-        session.refresh(db_producto)
-        return db_producto
+            if data.categorias_ids:
+                for cat_id in data.categorias_ids:
+                    uow.productos.add_categoria_relacion(
+                        producto_id=db_producto.id,
+                        categoria_id=cat_id,
+                        es_principal=(cat_id == data.categoria_principal_id),
+                    )
+
+            if data.ingredientes:
+                for ingrediente in data.ingredientes:
+                    uow.productos.add_ingrediente_relacion(
+                        producto_id=db_producto.id,
+                        ingrediente_id=ingrediente.ingrediente_id,
+                        es_removible=ingrediente.es_removible,
+                        es_principal=ingrediente.es_principal,
+                    )
+
+            uow.commit()
+            uow.productos.refresh(db_producto)
+            return db_producto
 
     @staticmethod
     def get_all(session: Session, skip: int = 0, limit: int = 100):
-        # Filtro de Soft Delete
-        statement = select(Producto).where(
-            col(Producto.deleted_at).is_(None)
-        ).offset(skip).limit(limit)
-        return session.exec(statement).all()
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            return uow.productos.get_all(skip=skip, limit=limit)
 
     @staticmethod
     def get_by_id(session: Session, producto_id: int):
-        statement = select(Producto).where(
-            Producto.id == producto_id,
-            col(Producto.deleted_at).is_(None)
-        )
-        return session.exec(statement).first()
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            return uow.productos.get_by_id(producto_id)
 
     @staticmethod
     def update(session: Session, producto_id: int, data: ProductoUpdate):
-        db_producto = ProductoService.get_by_id(session, producto_id)
-        if not db_producto:
-            return None
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            db_producto = uow.productos.get_by_id(producto_id)
+            if not db_producto:
+                return None
 
-        values = data.model_dump(exclude_unset=True)
-        for key, value in values.items():
-            setattr(db_producto, key, value)
+            values = data.model_dump(exclude_unset=True)
+            for key, value in values.items():
+                setattr(db_producto, key, value)
 
-        session.add(db_producto)
-        session.commit()
-        session.refresh(db_producto)
-        return db_producto
+            uow.productos.add(db_producto)
+            uow.commit()
+            uow.productos.refresh(db_producto)
+            return db_producto
 
     @staticmethod
     def soft_delete(session: Session, producto_id: int):
-        db_producto = session.get(Producto, producto_id)
-        if db_producto:
-            # Marcado lógico
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            db_producto = uow.productos.get_by_id(producto_id)
+            if not db_producto:
+                return None
+
             db_producto.deleted_at = get_utc_now()
-            session.add(db_producto)
-            session.commit()
-        return db_producto
+            uow.productos.add(db_producto)
+            uow.commit()
+            return db_producto

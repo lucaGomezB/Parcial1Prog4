@@ -11,6 +11,7 @@ class TimestampModel(SQLModel):
         default_factory=get_utc_now,
         nullable=False
     )
+    
     updated_at: datetime = Field(
         default_factory=get_utc_now,
         sa_column_kwargs={"onupdate": get_utc_now},
