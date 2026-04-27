@@ -12,19 +12,27 @@ class ProductoService:
         # 1. Extraer datos de relaciones y crear el Producto
         producto_data = data.model_dump(exclude={"categorias_ids", "categoria_principal_id", "ingredientes"})
         db_producto = Producto(**producto_data)
-        
         session.add(db_producto)
         session.flush() # Obtenemos db_producto.id
-
-        # 2. Asignar Categorías
-        for cat_id in data.categorias_ids:
-            enlace_cat = ProductoCategoria(producto_id=db_producto.id, categoria_id=cat_id, es_principal=(cat_id == data.categoria_principal_id))
-            session.add(enlace_cat)
-
-        # 3. Asignar Ingredientes
-        for i in data.ingredientes:
-            enlace_ingredientes = ProductoIngrediente(producto_id=db_producto.id, ingrediente_id=i.ingrediente_id, es_removible=i.es_removible, es_principal=i.es_principal)
-            session.add(enlace_ingredientes)
+        # 2. Asignar Categorías (Solo si vienen en el JSON)
+        if data.categorias_ids:
+            for cat_id in data.categorias_ids:
+                enlace_cat = ProductoCategoria(
+                    producto_id=db_producto.id, 
+                    categoria_id=cat_id, 
+                    es_principal=(cat_id == data.categoria_principal_id)
+                )
+                session.add(enlace_cat)
+        # 3. Asignar Ingredientes (Solo si vienen en el JSON)
+        if data.ingredientes:
+            for i in data.ingredientes:
+                enlace_ingredientes = ProductoIngrediente(
+                    producto_id=db_producto.id, 
+                    ingrediente_id=i.ingrediente_id, 
+                    es_removible=i.es_removible, 
+                    es_principal=i.es_principal
+                )
+                session.add(enlace_ingredientes)
 
         session.commit()
         session.refresh(db_producto)

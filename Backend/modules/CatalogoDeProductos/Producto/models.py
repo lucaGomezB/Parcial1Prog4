@@ -17,7 +17,7 @@ class ProductoBase(TimestampModel):
     tiempo_prep_min: int = Field(default=0)
     disponible: bool = Field(default=True)
 
-class Producto(ProductoBase, TimestampModel, SoftDeleteModel, table=True):
+class Producto(ProductoBase, SoftDeleteModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     # Usar strings en los nombres de clases para evitar la carga inmediata y prevenir un bucle infinito facil
     categorias: List["Categoria"] = Relationship(back_populates="productos", link_model=ProductoCategoria)
