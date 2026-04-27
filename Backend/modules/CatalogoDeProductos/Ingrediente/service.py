@@ -14,9 +14,11 @@ class IngredienteService:
         return db_ingrediente
 
     @staticmethod
-    def get_all(session: Session) -> List[Ingrediente]:
+    def get_all(session: Session, skip: int = 0, limit: int = 100) -> List[Ingrediente]:
         # Filtro obligatorio para registros no borrados
-        statement = select(Ingrediente).where(col(Ingrediente.deleted_at).is_(None))
+        statement = select(Ingrediente).where(
+            col(Ingrediente.deleted_at).is_(None)
+        ).offset(skip).limit(limit)
         return session.exec(statement).all()
 
     @staticmethod

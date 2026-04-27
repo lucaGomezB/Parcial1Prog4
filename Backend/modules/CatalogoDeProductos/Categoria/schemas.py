@@ -3,6 +3,12 @@ from .models import CategoriaBase
 class CategoriaCreate(CategoriaBase):
     pass
 
+class CategoriaUpdate(CategoriaBase):
+    nombre: str | None = None
+    descripcion: str | None = None
+    parent_id: int | None = None
+    orden_display: int | None = None
+
 class CategoriaRead(CategoriaBase):
     id: int
 

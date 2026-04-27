@@ -22,6 +22,13 @@ def read_producto(producto_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     return producto
 
+@router.patch("/{producto_id}", response_model=ProductoRead)
+def update_producto(producto_id: int, data: ProductoUpdate, session: Session = Depends(get_session)):
+    producto = ProductoService.update(session, producto_id, data)
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return producto
+
 @router.delete("/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_producto(producto_id: int, session: Session = Depends(get_session)):
     if not ProductoService.soft_delete(session, producto_id):

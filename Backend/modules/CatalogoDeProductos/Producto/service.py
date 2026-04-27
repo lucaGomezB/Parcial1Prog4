@@ -55,6 +55,21 @@ class ProductoService:
         return session.exec(statement).first()
 
     @staticmethod
+    def update(session: Session, producto_id: int, data: ProductoUpdate):
+        db_producto = ProductoService.get_by_id(session, producto_id)
+        if not db_producto:
+            return None
+
+        values = data.model_dump(exclude_unset=True)
+        for key, value in values.items():
+            setattr(db_producto, key, value)
+
+        session.add(db_producto)
+        session.commit()
+        session.refresh(db_producto)
+        return db_producto
+
+    @staticmethod
     def soft_delete(session: Session, producto_id: int):
         db_producto = session.get(Producto, producto_id)
         if db_producto:

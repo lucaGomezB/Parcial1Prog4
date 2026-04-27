@@ -12,8 +12,8 @@ def create_ingrediente(data: IngredienteCreate, session: Session = Depends(get_s
     return IngredienteService.create(session, data)
 
 @router.get("/", response_model=List[IngredienteRead])
-def read_ingredientes(session: Session = Depends(get_session)):
-    return IngredienteService.get_all(session)
+def read_ingredientes(skip: int = 0, limit: int = 100, session: Session = Depends(get_session)):
+    return IngredienteService.get_all(session, skip=skip, limit=limit)
 
 @router.get("/{ingrediente_id}", response_model=IngredienteRead)
 def read_ingrediente(ingrediente_id: int, session: Session = Depends(get_session)):
