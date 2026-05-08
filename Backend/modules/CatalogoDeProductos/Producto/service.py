@@ -1,6 +1,6 @@
 from sqlmodel import Session
 from .models import Producto
-from .schemas import ProductoCreate, ProductoUpdate
+from .schemas import ProductoCreate, ProductoUpdate, IngredienteAsignado, CategoriaAsignada
 from models.base import get_utc_now
 from ..uow import CatalogoDeProductosUnitOfWork
 
@@ -28,6 +28,7 @@ class ProductoService:
                         ingrediente_id=ingrediente.ingrediente_id,
                         es_removible=ingrediente.es_removible,
                         es_principal=ingrediente.es_principal,
+                        orden=ingrediente.orden,
                     )
 
             uow.commit()
@@ -71,3 +72,59 @@ class ProductoService:
             uow.productos.add(db_producto)
             uow.commit()
             return db_producto
+
+    @staticmethod
+    def get_ingredientes(session: Session, producto_id: int):
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            return uow.productos.get_ingredientes(producto_id)
+
+    @staticmethod
+    def get_categorias(session: Session, producto_id: int):
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            return uow.productos.get_categorias(producto_id)
+
+    @staticmethod
+    def add_ingrediente(session: Session, producto_id: int, data: IngredienteAsignado):
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            db_producto = uow.productos.get_by_id(producto_id)
+            if not db_producto:
+                return None
+            uow.productos.add_ingrediente_relacion(
+                producto_id=producto_id,
+                ingrediente_id=data.ingrediente_id,
+                es_removible=data.es_removible,
+                es_principal=data.es_principal,
+                orden=data.orden,
+            )
+            uow.commit()
+            return uow.productos.get_ingredientes(producto_id)
+
+    @staticmethod
+    def remove_ingrediente(session: Session, producto_id: int, ingrediente_id: int):
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            result = uow.productos.delete_ingrediente_relacion(producto_id, ingrediente_id)
+            if result:
+                uow.commit()
+            return result
+
+    @staticmethod
+    def add_categoria(session: Session, producto_id: int, data: "CategoriaAsignada"):
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            db_producto = uow.productos.get_by_id(producto_id)
+            if not db_producto:
+                return None
+            uow.productos.add_categoria_relacion(
+                producto_id=producto_id,
+                categoria_id=data.categoria_id,
+                es_principal=data.es_principal,
+            )
+            uow.commit()
+            return uow.productos.get_categorias(producto_id)
+
+    @staticmethod
+    def remove_categoria(session: Session, producto_id: int, categoria_id: int):
+        with CatalogoDeProductosUnitOfWork(session) as uow:
+            result = uow.productos.delete_categoria_relacion(producto_id, categoria_id)
+            if result:
+                uow.commit()
+            return result

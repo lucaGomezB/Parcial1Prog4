@@ -1,19 +1,42 @@
-from .models import CategoriaBase
+from typing import Optional, List
+from pydantic import BaseModel
 
-class CategoriaCreate(CategoriaBase):
-    pass
 
-class CategoriaUpdate(CategoriaBase):
-    nombre: str | None = None
-    descripcion: str | None = None
-    parent_id: int | None = None
-    orden_display: int | None = None
+# --- ESQUEMAS DE ENTRADA (Validación) ---
 
-class CategoriaRead(CategoriaBase):
+class CategoriaCreate(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    parent_id: Optional[int] = None
+    orden_display: int = 0
+
+
+class CategoriaUpdate(BaseModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    parent_id: Optional[int] = None
+    orden_display: Optional[int] = None
+
+
+# --- ESQUEMAS DE SALIDA (Respuesta de la API) ---
+
+class CategoriaRead(BaseModel):
     id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    parent_id: Optional[int] = None
+    orden_display: int
 
-# Este schema se usa para devolver el árbol completo de herencia
+    class Config:
+        from_attributes = True
+
+
 class CategoriaTree(CategoriaRead):
-    subcategorias: list["CategoriaTree"] = []
+    """Schema para devolver la jerarquía de categorías con sus hijos."""
+    subcategorias: List["CategoriaTree"] = []
 
-CategoriaTree.model_rebuild() # Necesario para que Pydantic procese la autoreferencia en los tipos
+    class Config:
+        from_attributes = True
+
+
+CategoriaTree.model_rebuild()

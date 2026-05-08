@@ -1,7 +1,10 @@
 import os
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
+from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, create_engine
 from modules.CatalogoDeProductos.Categoria.router import router as categoria_router
 from modules.CatalogoDeProductos.Producto.router import router as producto_router
@@ -28,10 +31,20 @@ async def lifespan(app: FastAPI):
     # --- Lógica de Cierre (Shutdown) ---
     pass
 
+
 # 3. Inicialización de la App con lifespan
 app = FastAPI(
     title="Sistema de Pedidos API",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(categoria_router)
@@ -41,3 +54,10 @@ app.include_router(ingrediente_router)
 @app.get("/")
 def read_root():
     return {"status": "online"} # Endpoint para probar si anda la app.
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "Error de integridad en la base de datos (Ej: ID inexistente o duplicado)."},
+    )

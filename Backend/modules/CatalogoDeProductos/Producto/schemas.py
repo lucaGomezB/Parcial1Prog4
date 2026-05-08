@@ -8,6 +8,12 @@ class IngredienteAsignado(SQLModel):
     ingrediente_id: int
     es_removible: bool = True
     es_principal: bool = False
+    orden: int = 0
+
+class CategoriaAsignada(SQLModel):
+    categoria_id: int
+    es_principal: bool = False
+
 
 class ProductoCreate(ProductoBase):
     categorias_ids: List[int] = []
@@ -22,4 +28,20 @@ class ProductoUpdate(ProductoBase):
 
 class ProductoRead(ProductoBase):
     id: int
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductoIngredienteRead(SQLModel):
+    """Schema para devolver un ingrediente asociado a un producto."""
+    ingrediente_id: int
+    ingrediente_nombre: str
+    es_removible: bool
+    es_principal: bool
+    orden: int
+    model_config = ConfigDict(from_attributes=True)
+
+class ProductoCategoriaRead(SQLModel):
+    """Schema para devolver una categoría asociada a un producto."""
+    categoria_id: int
+    categoria_nombre: str
+    es_principal: bool
     model_config = ConfigDict(from_attributes=True)
