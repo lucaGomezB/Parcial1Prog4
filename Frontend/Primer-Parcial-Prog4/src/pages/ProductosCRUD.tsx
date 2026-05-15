@@ -18,6 +18,10 @@ interface State {
   editingId: number | null;
   showForm: boolean;
   form: ProductoCreate;
+  selectedCategorias: {id: number, nombre: string, descripcion: string | null}[];
+  selectedIngredientes: {id: number, nombre: string, es_alergeno: boolean}[];
+  showCategoriaSelector: boolean;
+  showIngredienteSelector: boolean;
 }
 
 type Action =
@@ -29,7 +33,11 @@ type Action =
   | { type: "START_EDIT"; payload: Producto }
   | { type: "START_CREATE" }
   | { type: "CLOSE_FORM" }
-  | { type: "UPDATE_FORM"; payload: Partial<ProductoCreate> };
+  | { type: "UPDATE_FORM"; payload: Partial<ProductoCreate> }
+  | { type: "SET_SELECTED_CATEGORIAS"; payload: {id: number, nombre: string, descripcion: string | null}[] }
+  | { type: "SET_SELECTED_INGREDIENTES"; payload: {id: number, nombre: string, es_alergeno: boolean}[] }
+  | { type: "SET_SHOW_CATEGORIA_SELECTOR"; payload: boolean }
+  | { type: "SET_SHOW_INGREDIENTE_SELECTOR"; payload: boolean };
 
 const emptyForm: ProductoCreate = {
   nombre: "", descripcion: "", precio_base: 0, tiempo_prep_min: 0,
@@ -54,10 +62,18 @@ function reducer(state: State, action: Action): State {
           disponible: action.payload.disponible,
           imagenes_url: action.payload.imagenes_url,
         },
+        selectedCategorias: [],
+        selectedIngredientes: [],
+        showCategoriaSelector: false,
+        showIngredienteSelector: false,
       };
-    case "START_CREATE": return { ...state, editingId: null, showForm: true, form: emptyForm };
-    case "CLOSE_FORM": return { ...state, showForm: false, editingId: null, form: emptyForm };
+    case "START_CREATE": return { ...state, editingId: null, showForm: true, form: emptyForm, selectedCategorias: [], selectedIngredientes: [], showCategoriaSelector: false, showIngredienteSelector: false };
+    case "CLOSE_FORM": return { ...state, showForm: false, editingId: null, form: emptyForm, selectedCategorias: [], selectedIngredientes: [], showCategoriaSelector: false, showIngredienteSelector: false };
     case "UPDATE_FORM": return { ...state, form: { ...state.form, ...action.payload } };
+    case "SET_SELECTED_CATEGORIAS": return { ...state, selectedCategorias: action.payload, form: { ...state.form, categorias_ids: action.payload.map(c => c.id) } };
+    case "SET_SELECTED_INGREDIENTES": return { ...state, selectedIngredientes: action.payload, form: { ...state.form, ingredientes: action.payload.map(i => ({ ingrediente_id: i.id, es_removible: true, es_principal: false, orden: 0 })) } };
+    case "SET_SHOW_CATEGORIA_SELECTOR": return { ...state, showCategoriaSelector: action.payload };
+    case "SET_SHOW_INGREDIENTE_SELECTOR": return { ...state, showIngredienteSelector: action.payload };
     default: return state;
   }
 }
@@ -65,7 +81,110 @@ function reducer(state: State, action: Action): State {
 const init: State = {
   items: [], loading: false, error: null, page: 0, filter: "",
   editingId: null, showForm: false, form: emptyForm,
+  selectedCategorias: [], selectedIngredientes: [], showCategoriaSelector: false, showIngredienteSelector: false,
 };
+
+/* ── Selector de Categorías (para creación) ── */
+function CategoriaSelector({ allCategorias, selectedIds, onSelect, onClose }: {
+  allCategorias: Categoria[]; selectedIds: number[]; onSelect: (ids: number[]) => void; onClose: () => void;
+}) {
+  const [localSelected, setLocalSelected] = useState<number[]>(selectedIds);
+
+  const toggleCategory = (id: number) => {
+    setLocalSelected(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
+
+  const handleConfirm = () => {
+    onSelect(localSelected);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-white rounded p-6 w-full max-w-2xl max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold">Seleccionar Categorías</h2>
+          <button onClick={onClose} className="text-gray-500 text-xl cursor-pointer">✕</button>
+        </div>
+        <table className="w-full border-collapse border mb-4">
+          <thead><tr className="bg-gray-200">
+            <th className="border p-2 text-left">Seleccionar</th>
+            <th className="border p-2 text-left">Nombre</th>
+            <th className="border p-2 text-left">Descripción</th>
+          </tr></thead>
+          <tbody>
+            {allCategorias.map((cat) => (
+              <tr key={cat.id}>
+                <td className="border p-2">
+                  <input type="checkbox" checked={localSelected.includes(cat.id)} onChange={() => toggleCategory(cat.id)} />
+                </td>
+                <td className="border p-2">{cat.nombre}</td>
+                <td className="border p-2">{cat.descripcion ?? "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="flex gap-2">
+          <button onClick={handleConfirm} className="bg-blue-600 text-white px-4 py-1 rounded cursor-pointer">Confirmar</button>
+          <button onClick={onClose} className="bg-gray-400 text-white px-4 py-1 rounded cursor-pointer">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Selector de Ingredientes (para creación) ── */
+function IngredienteSelector({ allIngredientes, selectedIds, onSelect, onClose }: {
+  allIngredientes: Ingrediente[]; selectedIds: number[]; onSelect: (ids: number[]) => void; onClose: () => void;
+}) {
+  const [localSelected, setLocalSelected] = useState<number[]>(selectedIds);
+
+  const toggleIngredient = (id: number) => {
+    setLocalSelected(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
+
+  const handleConfirm = () => {
+    onSelect(localSelected);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-white rounded p-6 w-full max-w-2xl max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold">Seleccionar Ingredientes</h2>
+          <button onClick={onClose} className="text-gray-500 text-xl cursor-pointer">✕</button>
+        </div>
+        <table className="w-full border-collapse border mb-4">
+          <thead><tr className="bg-gray-200">
+            <th className="border p-2 text-left">Seleccionar</th>
+            <th className="border p-2 text-left">Nombre</th>
+            <th className="border p-2 text-left">Alérgeno</th>
+          </tr></thead>
+          <tbody>
+            {allIngredientes.map((ing) => (
+              <tr key={ing.id}>
+                <td className="border p-2">
+                  <input type="checkbox" checked={localSelected.includes(ing.id)} onChange={() => toggleIngredient(ing.id)} />
+                </td>
+                <td className="border p-2">{ing.nombre}</td>
+                <td className="border p-2">{ing.es_alergeno ? "Sí" : "No"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="flex gap-2">
+          <button onClick={handleConfirm} className="bg-blue-600 text-white px-4 py-1 rounded cursor-pointer">Confirmar</button>
+          <button onClick={onClose} className="bg-gray-400 text-white px-4 py-1 rounded cursor-pointer">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ── Popup de Ingredientes ── */
 function IngredientesPopup({ productoId, productoNombre, onClose }: {
@@ -317,6 +436,31 @@ export default function ProductosCRUD({ readOnly = false }: { readOnly?: boolean
   const [state, dispatch] = useReducer(reducer, init);
   const [ingPopup, setIngPopup] = useState<{ id: number; nombre: string } | null>(null);
   const [catPopup, setCatPopup] = useState<{ id: number; nombre: string } | null>(null);
+  const [allCats, setAllCats] = useState<Categoria[]>([]);
+  const [allIngs, setAllIngs] = useState<Ingrediente[]>([]);
+
+  // Load all categories and ingredients
+  useEffect(() => {
+    categoriasApi.getAll(0, 1000).then(setAllCats);
+    ingredientesApi.getAll(0, 1000).then(setAllIngs);
+  }, []);
+
+  // Load selected for editing
+  useEffect(() => {
+    if (state.editingId) {
+      Promise.all([
+        productosApi.getCategorias(state.editingId),
+        productosApi.getIngredientes(state.editingId),
+      ]).then(([cats, ings]) => {
+        dispatch({ type: "SET_SELECTED_CATEGORIAS", payload: cats.map(c => ({ id: c.categoria_id, nombre: c.categoria_nombre, descripcion: null })) });
+        const selectedIngs = ings.map(i => {
+          const ing = allIngs.find(ai => ai.id === i.ingrediente_id);
+          return { id: i.ingrediente_id, nombre: i.ingrediente_nombre, es_alergeno: ing ? ing.es_alergeno : false };
+        });
+        dispatch({ type: "SET_SELECTED_INGREDIENTES", payload: selectedIngs });
+      });
+    }
+  }, [state.editingId, allIngs]);
 
   const fetchData = useCallback(async () => {
     dispatch({ type: "SET_LOADING", payload: true });
@@ -377,73 +521,109 @@ export default function ProductosCRUD({ readOnly = false }: { readOnly?: boolean
         <input type="text" placeholder="Filtrar por nombre..." value={state.filter}
           onChange={(e) => dispatch({ type: "SET_FILTER", payload: e.target.value })}
           className="border px-2 py-1 rounded flex-grow" />
-        <button onClick={() => exportToExcel(filtered.map(({ id, nombre, precio_base, disponible, tiempo_prep_min }) => ({
-            id, nombre, precio_base, tiempo_prep_min, disponible: disponible ? "Sí" : "No",
-          })), "productos")}
-          className="bg-blue-600 text-white px-4 py-1 rounded cursor-pointer">Exportar Excel</button>
+        {!readOnly && (
+          <button onClick={() => exportToExcel(filtered.map(({ id, nombre, precio_base, disponible, tiempo_prep_min }) => ({
+              id, nombre, precio_base, tiempo_prep_min, disponible: disponible ? "Sí" : "No",
+            })), "productos")}
+            className="bg-blue-600 text-white px-4 py-1 rounded cursor-pointer">Exportar Excel</button>
+        )}
       </div>
 
       {state.showForm && !readOnly && (
-        <form onSubmit={handleSubmit} className="border p-4 mb-4 rounded bg-gray-50 grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-sm font-medium">Nombre</label>
-            <input value={state.form.nombre}
-              onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { nombre: e.target.value } })}
-              className="border px-2 py-1 rounded w-full" required />
+        <form onSubmit={handleSubmit} className="border p-4 mb-4 rounded bg-gray-50">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium">Nombre</label>
+              <input value={state.form.nombre}
+                onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { nombre: e.target.value } })}
+                className="border px-2 py-1 rounded w-full" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Descripción</label>
+              <input value={state.form.descripcion ?? ""}
+                onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { descripcion: e.target.value } })}
+                className="border px-2 py-1 rounded w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Precio Base</label>
+              <input type="number" step="0.01" value={state.form.precio_base ?? 0}
+                onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { precio_base: Number(e.target.value) } })}
+                className="border px-2 py-1 rounded w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Tiempo Prep. (min)</label>
+              <input type="number" value={state.form.tiempo_prep_min ?? 0}
+                onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { tiempo_prep_min: Number(e.target.value) } })}
+                className="border px-2 py-1 rounded w-full" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Disponible</label>
+              <input type="checkbox" checked={state.form.disponible ?? true}
+                onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { disponible: e.target.checked } })} />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium">Descripción</label>
-            <input value={state.form.descripcion ?? ""}
-              onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { descripcion: e.target.value } })}
-              className="border px-2 py-1 rounded w-full" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Precio Base</label>
-            <input type="number" step="0.01" value={state.form.precio_base ?? 0}
-              onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { precio_base: Number(e.target.value) } })}
-              className="border px-2 py-1 rounded w-full" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Tiempo Prep. (min)</label>
-            <input type="number" value={state.form.tiempo_prep_min ?? 0}
-              onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { tiempo_prep_min: Number(e.target.value) } })}
-              className="border px-2 py-1 rounded w-full" />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Disponible</label>
-            <input type="checkbox" checked={state.form.disponible ?? true}
-              onChange={(e) => dispatch({ type: "UPDATE_FORM", payload: { disponible: e.target.checked } })} />
-          </div>
-          {!state.editingId && (
-            <>
-              <div>
-                <label className="block text-sm font-medium">Categorías IDs (coma)</label>
-                <input value={(state.form.categorias_ids ?? []).join(",")}
-                  onChange={(e) => dispatch({ type: "UPDATE_FORM",
-                    payload: { categorias_ids: e.target.value ? e.target.value.split(",").map(Number) : [] } })}
-                  className="border px-2 py-1 rounded w-full" placeholder="1,2,3" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Ingredientes IDs (coma)</label>
-                <input value={(state.form.ingredientes ?? []).map((i) => i.ingrediente_id).join(",")}
-                  onChange={(e) => dispatch({ type: "UPDATE_FORM",
-                    payload: { ingredientes: e.target.value ? e.target.value.split(",").map((id, index) => ({
-                      ingrediente_id: Number(id),
-                      es_removible: true,
-                      es_principal: false,
-                      orden: index
-                    })) : [] } })}
-                  className="border px-2 py-1 rounded w-full" placeholder="4,5,6" />
-              </div>
-            </>
-          )}
-          <div className="col-span-2 flex gap-2 mt-2">
+
+          <div className="flex gap-2 mt-4">
             <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded cursor-pointer">
               {state.editingId ? "Actualizar" : "Crear"}</button>
             <button type="button" onClick={() => dispatch({ type: "CLOSE_FORM" })}
               className="bg-gray-400 text-white px-4 py-1 rounded cursor-pointer">Cancelar</button>
           </div>
         </form>
+      )}
+
+      {!state.editingId && state.showForm && !readOnly && (
+        <>
+          <div className="border p-4 mb-4 rounded bg-gray-50">
+            <h3 className="text-lg font-medium mb-2">Categorías</h3>
+            {state.selectedCategorias.length > 0 && (
+              <table className="w-full border-collapse border mb-2">
+                <thead><tr className="bg-gray-200">
+                  <th className="border p-2 text-left">Nombre</th>
+                  <th className="border p-2 text-left">Descripción</th>
+                  <th className="border p-2 text-left">Acción</th>
+                </tr></thead>
+                <tbody>
+                  {state.selectedCategorias.map((c) => (
+                    <tr key={c.id}>
+                      <td className="border p-2">{c.nombre}</td>
+                      <td className="border p-2">{c.descripcion ?? "-"}</td>
+                      <td className="border p-2">
+                        <button type="button" onClick={() => dispatch({ type: "SET_SELECTED_CATEGORIAS", payload: state.selectedCategorias.filter(sc => sc.id !== c.id) })} className="bg-red-600 text-white px-2 py-1 rounded text-sm cursor-pointer">Quitar</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <button type="button" onClick={() => dispatch({ type: "SET_SHOW_CATEGORIA_SELECTOR", payload: true })} className="bg-blue-600 text-white px-4 py-1 rounded cursor-pointer">Seleccionar Categorías</button>
+          </div>
+
+          <div className="border p-4 mb-4 rounded bg-gray-50">
+            <h3 className="text-lg font-medium mb-2">Ingredientes</h3>
+            {state.selectedIngredientes.length > 0 && (
+              <table className="w-full border-collapse border mb-2">
+                <thead><tr className="bg-gray-200">
+                  <th className="border p-2 text-left">Nombre</th>
+                  <th className="border p-2 text-left">Alérgeno</th>
+                  <th className="border p-2 text-left">Acción</th>
+                </tr></thead>
+                <tbody>
+                  {state.selectedIngredientes.map((i) => (
+                    <tr key={i.id}>
+                      <td className="border p-2">{i.nombre}</td>
+                      <td className="border p-2">{i.es_alergeno ? "Sí" : "No"}</td>
+                      <td className="border p-2">
+                        <button type="button" onClick={() => dispatch({ type: "SET_SELECTED_INGREDIENTES", payload: state.selectedIngredientes.filter(si => si.id !== i.id) })} className="bg-red-600 text-white px-2 py-1 rounded text-sm cursor-pointer">Quitar</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <button type="button" onClick={() => dispatch({ type: "SET_SHOW_INGREDIENTE_SELECTOR", payload: true })} className="bg-blue-600 text-white px-4 py-1 rounded cursor-pointer">Seleccionar Ingredientes</button>
+          </div>
+        </>
       )}
 
       {state.loading ? <p>Cargando...</p> : (
@@ -507,6 +687,31 @@ export default function ProductosCRUD({ readOnly = false }: { readOnly?: boolean
       {/* Popups */}
       {ingPopup && <IngredientesPopup productoId={ingPopup.id} productoNombre={ingPopup.nombre} onClose={() => setIngPopup(null)} />}
       {catPopup && <CategoriasPopup productoId={catPopup.id} productoNombre={catPopup.nombre} onClose={() => setCatPopup(null)} />}
+
+      {/* Selectores para creación */}
+      {state.showCategoriaSelector && (
+        <CategoriaSelector
+          allCategorias={allCats}
+          selectedIds={state.selectedCategorias.map(c => c.id)}
+          onSelect={(ids) => {
+            const selectedCats = allCats.filter(c => ids.includes(c.id)).map(c => ({ id: c.id, nombre: c.nombre, descripcion: c.descripcion }));
+            dispatch({ type: "SET_SELECTED_CATEGORIAS", payload: selectedCats });
+          }}
+          onClose={() => dispatch({ type: "SET_SHOW_CATEGORIA_SELECTOR", payload: false })}
+        />
+      )}
+
+      {state.showIngredienteSelector && (
+        <IngredienteSelector
+          allIngredientes={allIngs}
+          selectedIds={state.selectedIngredientes.map(i => i.id)}
+          onSelect={(ids) => {
+            const selectedIngs = allIngs.filter(i => ids.includes(i.id)).map(i => ({ id: i.id, nombre: i.nombre, es_alergeno: i.es_alergeno }));
+            dispatch({ type: "SET_SELECTED_INGREDIENTES", payload: selectedIngs });
+          }}
+          onClose={() => dispatch({ type: "SET_SHOW_INGREDIENTE_SELECTOR", payload: false })}
+        />
+      )}
     </div>
   );
 }

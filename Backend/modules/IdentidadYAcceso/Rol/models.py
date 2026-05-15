@@ -1,18 +1,17 @@
 from typing import List, Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 from models.base import TimestampModel
+from ..usuario_rol import UsuarioRol
 
-# Esto evita que Usuario se importe en tiempo de ejecución (evita el círculo)
 if TYPE_CHECKING:
     from ..Usuario.models import Usuario
 
-class UsuarioRol(SQLModel, table=True):
-    usuario_id: int = Field(foreign_key="usuario.id", primary_key=True)
-    rol_id: int = Field(foreign_key="rol.id", primary_key=True)
 
 class Rol(TimestampModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    nombre: str = Field(unique=True)
-    
-    # Usamos el nombre de la clase como string "Usuario" y "UsuarioRol"
+    __tablename__ = "rol"
+
+    codigo: str = Field(primary_key=True, max_length=20)  # ← SEMANTIC PK
+    nombre: str = Field(unique=True, max_length=50, nullable=False)
+    descripcion: Optional[str] = Field(default=None)  # TEXT by default in SQLModel
+
     usuarios: List["Usuario"] = Relationship(back_populates="roles", link_model=UsuarioRol)

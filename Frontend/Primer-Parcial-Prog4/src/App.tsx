@@ -3,29 +3,73 @@ import { useState, useEffect } from 'react'
 import CategoriasCRUD from './pages/CategoriasCRUD'
 import IngredientesCRUD from './pages/IngredientesCRUD'
 import ProductosCRUD from './pages/ProductosCRUD'
-import Login from './pages/Login'
+import Login from './pages/LoginConceptual'
+import { clearAuth, getAccessToken, apiFetch } from './api/client'
 
 function App() {
   const [userRole, setUserRole] = useState<'admin' | 'guest' | null>(null)
+  const [verifying, setVerifying] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Migrar vieja autenticación si existe
-    if (localStorage.getItem('isAuthenticated') === 'true' && !localStorage.getItem('userRole')) {
-      localStorage.setItem('userRole', 'admin')
-      localStorage.removeItem('isAuthenticated')
+    async function checkAuth() {
+      // Migrar vieja autenticacion si existe
+      if (localStorage.getItem('isAuthenticated') === 'true' && !localStorage.getItem('userRole')) {
+        localStorage.setItem('userRole', 'admin')
+        localStorage.removeItem('isAuthenticated')
+      }
+
+      const role = localStorage.getItem('userRole') as 'admin' | 'guest' | null
+      const token = getAccessToken()
+
+      if (role === 'admin' && !token) {
+        // Alguien manipulo localStorage: intento de guest a admin sin token
+        clearAuth()
+        setUserRole(null)
+        setVerifying(false)
+        return
+      }
+
+      if (role === 'admin' && token) {
+        // Verificar que el token todavia sea valido contra el backend
+        try {
+          await apiFetch('/auth/me')
+          setUserRole('admin')
+        } catch {
+          // Token expirado o invalido -> limpiar y pedir login
+          clearAuth()
+          setUserRole(null)
+        }
+        setVerifying(false)
+        return
+      }
+
+      // guest o sin rol -> dejar como esta
+      setUserRole(role ?? null)
+      setVerifying(false)
     }
-    
-    const role = localStorage.getItem('userRole') as 'admin' | 'guest' | null
-    if (role) {
-      setUserRole(role)
-    }
+
+    checkAuth()
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('userRole')
+  const handleLogout = async () => {
+    // Revocar refresh token en el backend + limpiar cookie
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' })
+    } catch {
+      // Si falla, igual limpiamos localmente
+    }
+    clearAuth()
     setUserRole(null)
     navigate('/login')
+  }
+
+  if (verifying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-gray-500">Verificando sesion...</p>
+      </div>
+    )
   }
 
   if (!userRole) {

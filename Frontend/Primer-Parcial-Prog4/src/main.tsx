@@ -5,8 +5,8 @@ import './index.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <BrowserRouter>
+  <StrictMode> {/*Este wrapper activa verificaciones y advertencias adicionales */}
+    <BrowserRouter> {/**/}
       <App />
     </BrowserRouter>
   </StrictMode>,

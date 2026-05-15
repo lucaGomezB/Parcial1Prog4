@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from core.database import get_session
+from modules.IdentidadYAcceso.Auth.dependencies import require_roles
 from .service import CategoriaService
 from .schemas import CategoriaRead, CategoriaCreate, CategoriaTree, CategoriaUpdate
 
@@ -22,18 +23,19 @@ def read_categoria(categoria_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="No encontrada")
     return categoria
 
-@router.post("/", response_model=CategoriaRead) #Crear categoria
+# Endpoints protegidos - requieren ADMIN o STOCK
+@router.post("/", response_model=CategoriaCreate, dependencies=[Depends(require_roles(["ADMIN", "STOCK"]))])
 def create_categoria(data: CategoriaCreate, session: Session = Depends(get_session)):
     return CategoriaService.create(session, data)
 
-@router.patch("/{categoria_id}", response_model=CategoriaRead)
+@router.patch("/{categoria_id}", response_model=CategoriaUpdate, dependencies=[Depends(require_roles(["ADMIN", "STOCK"]))])
 def update_categoria(categoria_id: int, data: CategoriaUpdate, session: Session = Depends(get_session)):
     categoria = CategoriaService.update(session, categoria_id, data)
     if not categoria:
         raise HTTPException(status_code=404, detail="No encontrada")
     return categoria
 
-@router.delete("/{categoria_id}") #Borrar categoría (solo marcarla en la BD logicamente)
+@router.delete("/{categoria_id}", dependencies=[Depends(require_roles(["ADMIN", "STOCK"]))])
 def delete_categoria(categoria_id: int, session: Session = Depends(get_session)):
     obj = CategoriaService.soft_delete(session, categoria_id)
     if not obj:

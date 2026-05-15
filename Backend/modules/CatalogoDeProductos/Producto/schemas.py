@@ -1,6 +1,6 @@
 from typing import Optional, List
 from decimal import Decimal
-from pydantic import ConfigDict
+from pydantic import ConfigDict, field_validator
 from sqlmodel import SQLModel
 from .models import ProductoBase
 
@@ -19,6 +19,20 @@ class ProductoCreate(ProductoBase):
     categorias_ids: List[int] = []
     categoria_principal_id: Optional[int] = None
     ingredientes: Optional[List[IngredienteAsignado]] = []
+
+    @field_validator('categorias_ids')
+    @classmethod
+    def validar_categorias(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('Se requiere al menos 1 categoría para crear un producto')
+        return v
+
+    @field_validator('ingredientes')
+    @classmethod
+    def validar_ingredientes(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('Se requiere al menos 1 ingrediente para crear un producto')
+        return v
 
 class ProductoUpdate(ProductoBase):
     nombre: Optional[str] = None
